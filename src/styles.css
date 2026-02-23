@@ -719,10 +719,20 @@ select#discount_select:focus {
 }
 
 .btn-action:disabled {
-    opacity: 0.5;
+    opacity: 0.55;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+    filter: none;
+}
+
+/* Keep Save button visually identifiable when saving */
+#save_pattis:disabled {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: rgba(255, 255, 255, 0.85);
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* Full-width span for single-column rows */
@@ -801,7 +811,7 @@ button {
     -webkit-tap-highlight-color: transparent;
 }
 
-button:hover {
+button:hover:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-accent):not(.btn-action) {
     background: var(--gray-50);
     border-color: var(--gray-300);
     box-shadow: var(--shadow-sm);
@@ -1204,13 +1214,14 @@ button:disabled {
 }
 
 .modal-overlay {
-    position: absolute;
+    position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
+    z-index: 9999;
 }
 
 .modal-content {
@@ -1340,6 +1351,7 @@ button:disabled {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
     overflow: hidden;
     word-break: break-word;
 }

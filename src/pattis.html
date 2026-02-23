@@ -3,8 +3,12 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Pattis Gallery — view, manage and export your saved patti notes.">
+  <meta name="theme-color" content="#2563eb">
   <title>Pattis Gallery</title>
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗂️</text></svg>">
   <link rel="stylesheet" href="styles.css">
   <style>
     /* ── Gallery Page Overrides ─────────────────────────────── */
@@ -405,12 +409,12 @@
 <body>
   <div class="app">
     <header class="header">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0">
         <h1 style="margin:0">🗂️ Pattis Gallery</h1>
         <span id="countBadge" style="display:none">0 pattis</span>
         <p id="countText" style="display:none"></p><!-- kept for JS compat -->
       </div>
-      <div class="header-actions">
+      <div class="header-actions" style="flex-wrap:wrap;gap:0.4rem">
         <button id="backBtn" class="btn-primary">← Back</button>
         <button id="regenBtn" class="btn-secondary" style="font-size:0.78rem">⟳ Regenerate PNGs</button>
         <button id="clearAll" class="btn-danger" style="font-size:0.78rem">🗑 Clear All</button>
@@ -471,16 +475,21 @@
   <script>
     // Override countText update to also drive the badge
     (function () {
-      const _orig = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'textContent');
-      // Patch countText via MutationObserver after DOM ready
       document.addEventListener('DOMContentLoaded', () => {
         const ct = document.getElementById('countText');
         const badge = document.getElementById('countBadge');
         if (!ct || !badge) return;
-        const obs = new MutationObserver(() => {
+
+        function syncBadge() {
           const t = ct.textContent.trim();
           if (t) { badge.textContent = t; badge.style.display = 'inline-flex'; }
-        });
+        }
+
+        // Sync once immediately (catches pattis loaded synchronously)
+        syncBadge();
+
+        // Also watch for future changes from pattis.js
+        const obs = new MutationObserver(syncBadge);
         obs.observe(ct, { childList: true, subtree: true, characterData: true });
       });
     })();
