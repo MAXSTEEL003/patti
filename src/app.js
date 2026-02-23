@@ -1715,47 +1715,39 @@ function wire() {
     }
   });
 
-  // Save to Pattis button (stores dataURL in localStorage)
-  q('#save_pattis')?.addEventListener('click', async () => {
-    const btn = q('#save_pattis');
-    const saveSvg = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
-    if (btn) { btn.disabled = true; btn.innerHTML = saveSvg + ' Saving...'; }
-    try {
-      try { recalcAll(); } catch (e) { }
-      // pre-generate blob so we can inspect type (SVG fallback) and show helpful messages
-      let blob;
+  // Save to Pattis button (stores dataURL in localStorage and syncs to Firebase)
+  const _savePattisBtn = q('#save_pattis');
+  if (_savePattisBtn && !_savePattisBtn.dataset.wired) {
+    _savePattisBtn.dataset.wired = '1'; // guard against duplicate listener registration
+    _savePattisBtn.addEventListener('click', async () => {
+      const btn = q('#save_pattis');
+      const saveSvg = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
+      if (btn) { btn.disabled = true; btn.innerHTML = saveSvg + ' Saving...'; }
       try {
-        blob = await getPreviewBlob();
-      } catch (genErr) {
-        console.error('Preview generation failed:', genErr);
-        alert('Preview generation failed: ' + (genErr && genErr.message ? genErr.message : String(genErr)));
-        throw genErr;
-      }
-      // Save locally first
-      const res = await saveToPattis(blob);
-      console.log('saveToPattis local result:', res);
-      // then upload (wait) and update entry
-      try {
-        const onProgress = (pct) => { if (btn) btn.innerHTML = saveSvg + ' Saving ' + pct + '%'; };
-        const url = await uploadBlobAndEnsurePng(blob, res.id, { bill_no: q('#bill_no')?.value || '', miller: q('#miller_name')?.value || '', party: q('#party_name')?.value || '' }, onProgress);
-        // update localStorage entry with remoteUrl
-        const cur = JSON.parse(localStorage.getItem(PATTIS_KEY) || '[]');
-        const idx = cur.findIndex(i => i.id === res.id);
-        if (idx >= 0) { cur[idx].remoteUrl = url; localStorage.setItem(PATTIS_KEY, JSON.stringify(cur)); }
+        try { recalcAll(); } catch (e) { }
+        // Pre-generate blob so we can inspect type and show helpful messages
+        let blob;
+        try {
+          blob = await getPreviewBlob();
+        } catch (genErr) {
+          console.error('Preview generation failed:', genErr);
+          alert('Preview generation failed: ' + (genErr && genErr.message ? genErr.message : String(genErr)));
+          throw genErr;
+        }
+        // saveToPattis handles BOTH local storage AND Firebase upload internally.
+        // Do NOT call uploadBlobAndEnsurePng separately — that would cause duplicate Firebase entries.
+        await saveToPattis(blob);
         if (btn) { btn.innerHTML = saveSvg + ' Saved ✓'; }
-      } catch (uploadErr) {
-        console.warn('Synchronous upload failed, local copy saved:', uploadErr);
-        if (btn) btn.innerHTML = saveSvg + ' Saved ✓';
-      }
-      // Show toast — no navigation, user can click View Pattis Gallery button in header
-      showToast('✅ Saved! Gallery updated in real-time.');
-      setTimeout(() => { if (btn) { btn.innerHTML = saveSvg + ' Save to Pattis'; btn.disabled = false; } }, 2000);
-      return; // skip the finally block re-enabling the button (we do it above in setTimeout)
-    } catch (e) {
-      alert('Failed to save: ' + (e && e.message ? e.message : e));
-      if (btn) btn.innerHTML = saveSvg + ' Save to Pattis';
-    } finally { if (btn) btn.disabled = false; }
-  });
+        showToast('✅ Saved! View in Pattis Gallery.');
+        setTimeout(() => { if (btn) { btn.innerHTML = saveSvg + ' Save to Pattis'; btn.disabled = false; } }, 2000);
+        return; // skip finally re-enable (done in setTimeout above)
+      } catch (e) {
+        alert('Failed to save: ' + (e && e.message ? e.message : e));
+        if (btn) btn.innerHTML = saveSvg + ' Save to Pattis';
+      } finally { if (btn) btn.disabled = false; }
+    });
+  }
+
 
   q('#go_pattis')?.addEventListener('click', () => { window.location.href = 'pattis.html'; });
 
