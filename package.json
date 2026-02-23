@@ -3,8 +3,30 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "npm start",
     "preinstall": "echo 'Ensure dependencies in src are installed when needed'",
     "build": "node scripts/build.js",
-    "start": "cd src && npm run dev"
-  }
+    "start": "cd src && npm run dev",
+    "rasterizer": "node rasterizer-server.js",
+    "test:rasterizer": "node scripts/test-rasterizer.js"
+  },
+  "dependencies": {
+    "body-parser": "^2.2.0",
+    "express": "^5.1.0",
+    "firebase": "^12.4.0",
+    "puppeteer": "^24.25.0"
+  },
+  "description": "Patti Note Calculator",
+  "main": "rasterizer-server.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MAXSTEEL003/PATTI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MAXSTEEL003/PATTI/issues"
+  },
+  "homepage": "https://github.com/MAXSTEEL003/PATTI#readme"
 }

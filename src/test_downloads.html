@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pattis download test page</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:20px}
+    .item{border:1px solid #ddd;padding:12px;margin:8px 0;border-radius:6px}
+    .ok{color:green} .err{color:crimson}
+    button{margin-right:8px}
+    pre{background:#f7f7f7;padding:8px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <h1>Pattis download & PDF test</h1>
+  <p>This page injects a few sample items into the Pattis store and exercises the PNG + PDF helpers.</p>
+
+  <div>
+    <button id="inject">Inject sample items</button>
+    <button id="render">Render gallery</button>
+    <button id="quick">Run quick checks (fetch & convert)</button>
+    <button id="full" title="Runs conversion + PDF export (stubs save)">Run full export checks</button>
+  </div>
+
+  <div style="margin-top:8px">
+    <label><input type="checkbox" id="allowDownloads"> Enable real downloads (uncheck to stub PDF save during tests)</label>
+  </div>
+
+  <h3>Preview / Download</h3>
+  <div id="preview_area"></div>
+
+  <h3>Rasterizer settings</h3>
+  <div class="item">
+    <div>
+      <label>Rasterizer URL: <input id="rasterizerUrl" placeholder="http://127.0.0.1:3000" style="width:320px" /></label>
+    </div>
+    <div>
+      <label>API Key (optional): <input id="rasterizerKey" placeholder="(optional)" style="width:320px" /></label>
+    </div>
+    <div style="margin-top:8px">
+      <button id="saveRasterizer">Save</button>
+      <button id="testRasterizer">Test connection</button>
+      <span id="rasterizerResult"></span>
+    </div>
+  </div>
+
+  <div id="items"></div>
+  <h3>Results</h3>
+  <div id="results"></div>
+
+  <!-- load jspdf so PDF export works in-browser. We will stub save during tests to avoid downloads. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+
+  <!-- Load pattis.js (assumes this file sits next to pattis.js in src/) -->
+  <script src="./pattis.js"></script>
+
+  <script>
+    // Use a test-specific storage key to avoid clobbering real data
+    window.PATTIS_KEY = 'pattis_images_test';
+
+    // Small sample data URLs
+    const PNG_DATA = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='; // 1x1 PNG
+    const JPEG_DATA = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxMTEhUTExMWFhUXGR0aGBgYGB8cGxkbGx8aGx8aHSggGholHR0YITEhJSkrLi4uGB8zODMsNygtLisBCgoKDg0OGxAQGzclHyUtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLf/AABEIAKgBLAMBIgACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQYBAwIBB//EADkQAAICAQIDBQMFAQAAAAAAAAECAAMRBBIhMQUTQVEiYXGhFDKBkbHB0SMzQmKx/8QAGgEBAAMBAQEAAAAAAAAAAAAAAAIDBAEFBv/EAC0RAAICAQMCBAUFAAAAAAAAAAABAhEDBBIhMUFRBRMiYXGBkaGx0fDx/9oADAMBAAIRAxEAPwD7xREQEREBERAREQEREBERAREQEREBERAREQf/2Q==';
+    const SVG_DATA = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><rect width="100%" height="100%" fill="#4f46e5"/><text x="50%" y="50%" fill="#fff" font-size="20" dominant-baseline="middle" text-anchor="middle">SVG</text></svg>');
+
+    // Simple helper to write sample items
+    function injectSamples(){
+      const now = Date.now();
+      const items = [
+        { id: 'png-1', created: now, miller: 'PNG sample', originalDataUrl: PNG_DATA },
+        { id: 'jpg-1', created: now-1000, miller: 'JPEG sample', originalDataUrl: JPEG_DATA },
+        { id: 'svg-1', created: now-2000, miller: 'SVG sample', originalDataUrl: SVG_DATA }
+      ];
+      localStorage.setItem(window.PATTIS_KEY, JSON.stringify(items));
+      showItems(items);
+      appendResult('Injected ' + items.length + ' sample items', 'ok');
+    }
+
+    function showItems(items){
+      const container = document.getElementById('items'); container.innerHTML = '';
+      items.forEach(it=>{
+        const d = document.createElement('div'); d.className = 'item';
+        d.innerHTML = `<strong>${it.miller}</strong><div>id: ${it.id}</div><div>src: <code style="word-break:break-all">${it.originalDataUrl.slice(0,80)}${it.originalDataUrl.length>80? '...' : ''}</code></div>`;
+        const btnPng = document.createElement('button'); btnPng.textContent = 'Download PNG'; btnPng.addEventListener('click', ()=>{ downloadItem(it).catch(e=>appendResult('PNG download failed: '+e,'err')); });
+        const btnPdf = document.createElement('button'); btnPdf.textContent = 'Download PDF'; btnPdf.addEventListener('click', ()=>{ downloadItemAsPdf(it).catch(e=>appendResult('PDF download failed: '+e,'err')); });
+        d.appendChild(btnPng); d.appendChild(btnPdf);
+        container.appendChild(d);
+      });
+    }
+
+    function appendResult(msg, klass){
+      const el = document.createElement('div'); el.innerHTML = msg; el.className = klass || '';
+      document.getElementById('results').appendChild(el);
+    }
+
+    async function runQuickChecks(){
+      document.getElementById('results').innerHTML = '';
+      const store = JSON.parse(localStorage.getItem(window.PATTIS_KEY)||'[]');
+      if(store.length === 0){ appendResult('No sample items found, click Inject first', 'err'); return; }
+      const preview = document.getElementById('preview_area'); preview.innerHTML = '';
+      for(const it of store){
+        appendResult('Testing ' + it.miller + '...', '');
+        try{
+          const src = it.pngDataUrl || it.originalDataUrl || it.dataUrl || it.remoteUrl;
+          const blob = await fetchAndEnsurePngBlob(src);
+          appendResult('fetchAndEnsurePngBlob OK: ' + (blob && blob.size ? (blob.type + ' size=' + blob.size) : 'no blob'), 'ok');
+          const png = await ensurePngBlob(blob, src);
+          appendResult('ensurePngBlob OK: ' + (png && png.type ? png.type : 'no type'), 'ok');
+          // show preview + download link
+          try{
+            const url = URL.createObjectURL(png);
+            const wrap = document.createElement('div'); wrap.style.display='inline-block'; wrap.style.margin='8px';
+            wrap.innerHTML = `<div style="width:160px;height:120px;border:1px solid #ddd;padding:6px"><img src="${url}" style="max-width:100%;height:100%;object-fit:contain"></div>`;
+            const a = document.createElement('a'); a.href = url; a.download = `patti_preview_${it.id}.png`; a.textContent = 'Download PNG'; a.style.display='block'; a.style.marginTop='6px';
+            wrap.appendChild(a); preview.appendChild(wrap);
+            setTimeout(()=>URL.revokeObjectURL(url), 60*1000);
+          }catch(e){ console.warn('preview failed', e); }
+        }catch(e){ appendResult('Quick check failed for ' + it.miller + ': ' + e.message || e, 'err'); }
+      }
+    }
+
+    async function runFullChecks(){
+      document.getElementById('results').innerHTML = '';
+      const store = JSON.parse(localStorage.getItem(window.PATTIS_KEY)||'[]');
+      if(store.length === 0){ appendResult('No sample items found, click Inject first', 'err'); return; }
+
+      // decide whether to stub PDF saves depending on allowDownloads checkbox
+      const allowDownloads = !!document.getElementById('allowDownloads')?.checked;
+      let patched = false; let origJsPDF = null;
+      if(!allowDownloads){
+        origJsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (window.jsPDF || null);
+        if(origJsPDF && origJsPDF.prototype && !origJsPDF.prototype._patti_save_stubbed){
+          origJsPDF.prototype._patti_save_original = origJsPDF.prototype.save;
+          origJsPDF.prototype.save = function(filename){ this._patti_save_called = filename || true; /* no-op to avoid auto-download */ };
+          origJsPDF.prototype._patti_save_stubbed = true;
+          patched = true;
+        }
+      }
+
+      for(const it of store){
+        appendResult('Full test ' + it.miller + '...', '');
+        try{
+          const src = it.pngDataUrl || it.originalDataUrl || it.dataUrl || it.remoteUrl;
+          const blob = await fetchAsBlob(src);
+          appendResult('fetchAsBlob OK: ' + (blob && blob.size ? blob.type + ' size=' + blob.size : 'no blob'), 'ok');
+          let png = null;
+          try{ png = await ensurePngBlob(blob, src); appendResult('ensurePngBlob OK', 'ok'); }catch(e){ appendResult('ensurePngBlob failed: '+e.message,'err'); }
+          try{
+            // attempt PDF export - save is stubbed
+            const filename = 'patti_test_' + it.id + '.pdf';
+            await exportBlobAsPDF(png || blob, filename);
+            appendResult('exportBlobAsPDF completed' + (allowDownloads ? ' (downloaded)' : ' (save was stubbed)'), 'ok');
+            // if PNG available, also show preview and download link
+            try{ const url = URL.createObjectURL(png || blob); const wrap = document.createElement('div'); wrap.style.display='inline-block'; wrap.style.margin='8px'; wrap.innerHTML = `<div style="width:160px;height:120px;border:1px solid #ddd;padding:6px"><img src="${url}" style="max-width:100%;height:100%;object-fit:contain"></div>`; const a = document.createElement('a'); a.href = url; a.download = `patti_preview_${it.id}.png`; a.textContent = 'Download PNG'; a.style.display='block'; a.style.marginTop='6px'; wrap.appendChild(a); document.getElementById('preview_area').appendChild(wrap); setTimeout(()=>URL.revokeObjectURL(url), 60*1000); }catch(e){ /* ignore preview errors */ }
+          }catch(e){ appendResult('exportBlobAsPDF failed: '+(e.message||e),'err'); }
+        }catch(e){ appendResult('Full test failed for ' + it.miller + ': ' + (e.message||e), 'err'); }
+      }
+
+      // restore jsPDF save
+      if(patched && origJsPDF && origJsPDF.prototype && origJsPDF.prototype._patti_save_original){
+        origJsPDF.prototype.save = origJsPDF.prototype._patti_save_original;
+        delete origJsPDF.prototype._patti_save_original;
+        delete origJsPDF.prototype._patti_save_stubbed;
+      }
+    }
+
+    document.getElementById('inject').addEventListener('click', ()=>{ injectSamples(); });
+    document.getElementById('render').addEventListener('click', ()=>{ try{ render(); }catch(e){ appendResult('render failed: '+(e.message||e),'err'); } });
+    document.getElementById('quick').addEventListener('click', ()=>{ runQuickChecks(); });
+    document.getElementById('full').addEventListener('click', ()=>{ runFullChecks(); });
+
+    // Auto-inject on load for convenience
+    window.addEventListener('load', ()=>{ injectSamples(); try{ render(); }catch(e){} });
+
+    // Rasterizer settings wiring
+    const RASTER_URL_KEY = 'PATTIS_RASTERIZER_URL_TEST';
+    const RASTER_KEY_KEY = 'PATTIS_RASTERIZER_KEY_TEST';
+    const urlInput = document.getElementById('rasterizerUrl');
+    const keyInput = document.getElementById('rasterizerKey');
+    const resSpan = document.getElementById('rasterizerResult');
+    const savedUrl = localStorage.getItem(RASTER_URL_KEY) || '';
+    const savedKey = localStorage.getItem(RASTER_KEY_KEY) || '';
+    urlInput.value = savedUrl; keyInput.value = savedKey;
+
+    document.getElementById('saveRasterizer').addEventListener('click', ()=>{
+      localStorage.setItem(RASTER_URL_KEY, urlInput.value || '');
+      localStorage.setItem(RASTER_KEY_KEY, keyInput.value || '');
+      // Also export to global keys that pattis.js checks
+      try{ localStorage.setItem('PATTIS_RASTERIZER_URL', urlInput.value || ''); localStorage.setItem('PATTIS_RASTERIZER_KEY', keyInput.value || ''); }catch(e){}
+      resSpan.textContent = 'Saved'; resSpan.className = 'ok';
+      setTimeout(()=>{ resSpan.textContent=''; }, 2000);
+    });
+
+    document.getElementById('testRasterizer').addEventListener('click', async ()=>{
+      resSpan.textContent = 'Testing...'; resSpan.className = '';
+      const url = (urlInput.value || '').replace(/\/$/, '') + '/rasterize';
+      const key = keyInput.value || '';
+      if(!urlInput.value){ resSpan.textContent = 'Set Rasterizer URL first'; resSpan.className='err'; return; }
+      try{
+        const payload = { type: 'svg', data: '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="80"><rect width="100%" height="100%" fill="#10b981"/><text x="50%" y="50%" fill="#fff" font-size="18" dominant-baseline="middle" text-anchor="middle">test</text></svg>' };
+        const headers = { 'Content-Type': 'application/json' };
+        if(key) headers['x-api-key'] = key;
+        const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+        if(!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + (await resp.text()));
+        const blob = await resp.blob();
+        if(blob.type !== 'image/png') throw new Error('unexpected content-type: '+blob.type);
+        resSpan.textContent = 'OK — received PNG, size=' + blob.size; resSpan.className='ok';
+      }catch(e){ resSpan.textContent = 'Test failed: '+(e.message||e); resSpan.className='err'; }
+    });
+  </script>
+</body>
+</html>

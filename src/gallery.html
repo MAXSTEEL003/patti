@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pattis Gallery</title>
+  <style>
+    body{font-family:system-ui,Arial;margin:18px;background:#f6f8fa}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+    .card{background:#fff;padding:8px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+    img{width:100%;height:auto;border-radius:6px}
+  </style>
+</head>
+<body>
+  <h1>Pattis Gallery</h1>
+  <div id="status">Loading…</div>
+  <div id="gallery" class="grid"></div>
+  <script>
+    async function load(){
+      const status = document.getElementById('status');
+      try{
+        // call the deployed function's /list endpoint; if hosting via Firebase Hosting you can
+        // rewrite /api/* to the function and use '/api/list' — otherwise use the full function URL.
+        const fn = window.SVG_TO_PNG_FN_URL ? window.SVG_TO_PNG_FN_URL.replace(/\/rasterize\/?$/,'') + '/list' : '/functions/list';
+        const res = await fetch(fn);
+        if(!res.ok) throw new Error('Failed to fetch list: ' + res.status);
+        const data = await res.json();
+        if(!data.ok) throw new Error('List error: ' + (data.error||'no data'));
+        status.style.display = 'none';
+        const g = document.getElementById('gallery');
+        data.files.forEach(f=>{
+          const card = document.createElement('div'); card.className='card';
+          card.innerHTML = `<div style="font-size:12px;color:#333;margin-bottom:6px">${f.name.replace('pattis/','')} <small style="color:#666">${new Date(f.updated).toLocaleString()}</small></div><img loading="lazy" src="${f.url}" alt="${f.name}">`;
+          g.appendChild(card);
+        });
+      }catch(e){ status.textContent = 'Error: ' + e.message; console.error(e); }
+    }
+    load();
+  </script>
+</body>
+</html>

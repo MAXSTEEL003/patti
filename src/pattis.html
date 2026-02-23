@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pattis Gallery</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ── Gallery Page Overrides ─────────────────────────────── */
+
+    /* Responsive masonry-style grid */
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 18px;
+    }
+
+    /* Premium card */
+    .patti-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.22s ease,
+        border-color 0.2s ease;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .patti-card:hover {
+      transform: translateY(-6px) scale(1.01);
+      box-shadow: var(--shadow-md);
+      border-color: rgba(37, 99, 235, 0.2);
+    }
+
+    /* Thumbnail */
+    .patti-thumb-wrap {
+      position: relative;
+      width: 100%;
+      height: 160px;
+      background: linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%);
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .patti-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transition: transform 0.3s ease, opacity 0.2s ease;
+    }
+
+    .patti-thumb-wrap:hover .patti-thumb {
+      transform: scale(1.04);
+    }
+
+    /* Zoom-in icon overlay on hover */
+    .patti-thumb-wrap::after {
+      content: '🔍';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.6);
+      font-size: 28px;
+      opacity: 0;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .3));
+    }
+
+    .patti-thumb-wrap:hover::after {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    /* Card body */
+    .patti-body {
+      padding: 12px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    /* Meta info */
+    .patti-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .patti-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1.3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 140px;
+    }
+
+    .patti-bill {
+      font-size: 11.5px;
+      color: var(--gray-500);
+      margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 140px;
+    }
+
+    .patti-date {
+      font-size: 11px;
+      color: var(--gray-400);
+      text-align: right;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .cloud-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #0ea5e9;
+      background: rgba(14, 165, 233, 0.1);
+      border: 1px solid rgba(14, 165, 233, 0.2);
+      border-radius: 20px;
+      padding: 1px 6px;
+      margin-top: 3px;
+    }
+
+    /* Action buttons */
+    .patti-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .patti-btn {
+      flex: 1;
+      min-width: 0;
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--gray-200);
+      background: var(--bg-card-solid);
+      cursor: pointer;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--gray-700);
+      font-family: inherit;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s, box-shadow 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      min-height: 32px;
+      white-space: nowrap;
+    }
+
+    .patti-btn:hover {
+      background: var(--gray-50);
+      border-color: var(--gray-300);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .patti-btn:active {
+      transform: translateY(0);
+    }
+
+    .patti-btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+      border-color: var(--primary-dark);
+      box-shadow: 0 2px 6px rgba(37, 99, 235, .25);
+    }
+
+    .patti-btn-primary:hover {
+      background: linear-gradient(135deg, var(--primary-dark), #1e3a8a);
+      border-color: #1e3a8a;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, .35);
+    }
+
+    .patti-btn-danger {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.04));
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.25);
+    }
+
+    .patti-btn-danger:hover {
+      background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+      color: #fff;
+      border-color: var(--danger-dark);
+      box-shadow: 0 4px 10px rgba(239, 68, 68, .3);
+    }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 11, 33, 0.65);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      animation: fadeIn 0.18s ease;
+    }
+
+    .modal-body {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 20px;
+      border-radius: var(--radius-xl);
+      max-width: 92vw;
+      width: 1060px;
+      max-height: 93vh;
+      overflow: auto;
+      box-shadow: var(--shadow-xl);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      animation: scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      gap: 8px;
+    }
+
+    .modal-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    .modal-subtitle {
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+
+    .modal-body img {
+      display: block;
+      max-width: 100%;
+      max-height: 76vh;
+      border-radius: var(--radius-md);
+      margin: 0 auto;
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Upload / paste strip */
+    #pasteUpload {
+      background: rgba(248, 250, 252, 0.8);
+      border: 1.5px dashed var(--gray-300);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    #pasteUpload:focus-within {
+      border-color: var(--primary);
+      background: rgba(37, 99, 235, 0.03);
+    }
+
+    #pasteArea {
+      flex: 1;
+      color: var(--gray-500);
+      font-size: 13px;
+      outline: none;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Count badge */
+    #countBadge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.03em;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, .25);
+    }
+
+    /* Empty state */
+    .empty-state {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 56px 20px;
+      color: var(--gray-400);
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      opacity: 0.45;
+    }
+
+    .empty-state-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--gray-500);
+    }
+
+    .empty-state-sub {
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--gray-200);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 800ms linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    /* New card flash animation */
+    @keyframes patti-new-flash {
+      0% {
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.8);
+        background: rgba(16, 185, 129, 0.08);
+        transform: translateY(-6px) scale(1.02);
+      }
+
+      60% {
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4);
+        background: rgba(16, 185, 129, 0.04);
+      }
+
+      100% {
+        box-shadow: var(--shadow-sm);
+        background: var(--bg-card);
+        transform: translateY(0);
+      }
+    }
+
+    /* Live badge pulse */
+    @keyframes pulse-red {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .gallery {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+      }
+
+      .patti-thumb-wrap {
+        height: 130px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .gallery {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header class="header">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <h1 style="margin:0">🗂️ Pattis Gallery</h1>
+        <span id="countBadge" style="display:none">0 pattis</span>
+        <p id="countText" style="display:none"></p><!-- kept for JS compat -->
+      </div>
+      <div class="header-actions">
+        <button id="backBtn" class="btn-primary">← Back</button>
+        <button id="regenBtn" class="btn-secondary" style="font-size:0.78rem">⟳ Regenerate PNGs</button>
+        <button id="clearAll" class="btn-danger" style="font-size:0.78rem">🗑 Clear All</button>
+      </div>
+    </header>
+
+    <main style="padding: 0 4px 20px">
+      <!-- Paste / upload strip -->
+      <div id="pasteUpload">
+        <div id="pasteArea" contenteditable="true" role="textbox" aria-label="Paste image area">
+          📋 Paste image here (Ctrl+V) or drop an image
+        </div>
+        <input id="fileInput" type="file" accept="image/*" style="display:none" />
+        <button id="chooseFileBtn" class="btn-primary" style="flex-shrink:0;font-size:0.8rem">⬆ Upload file</button>
+      </div>
+
+      <!-- Gallery grid -->
+      <div id="gallery" class="gallery" role="list"></div>
+
+      <p style="margin-top:20px;color:var(--gray-400);font-size:12px;text-align:center">
+        Saved locally in your browser. Remote uploads (if any) are synced via Firestore.
+      </p>
+    </main>
+  </div>
+
+  <!-- Enlarge modal -->
+  <div id="modal" class="modal-overlay" style="display:none;">
+    <div class="modal-body" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title" id="modalTitle">Patti</div>
+          <div class="modal-subtitle" id="modalDate"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="modalInfo" style="font-size:12px;color:var(--gray-500)"></span>
+          <button id="modalClose" class="btn-secondary" style="font-size:0.78rem">✕ Close</button>
+        </div>
+      </div>
+      <div style="text-align:center">
+        <img id="modalImg" src="" alt="Patti preview" />
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Firebase config for real-time gallery sync -->
+  <script>
+    window.FIREBASE_CONFIG = {
+      apiKey: "AIzaSyCWGo-VjC-4ZPUts6wDCpNjRaD2c-M_dC0",
+      authDomain: "patticalculator.firebaseapp.com",
+      projectId: "patticalculator",
+      storageBucket: "patticalculator.firebasestorage.app",
+      messagingSenderId: "590381439239",
+      appId: "1:590381439239:web:9f20cd229dd335a894cda2",
+      measurementId: "G-M8YETCJ2MS"
+    };
+  </script>
+  <script>
+    // Override countText update to also drive the badge
+    (function () {
+      const _orig = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'textContent');
+      // Patch countText via MutationObserver after DOM ready
+      document.addEventListener('DOMContentLoaded', () => {
+        const ct = document.getElementById('countText');
+        const badge = document.getElementById('countBadge');
+        if (!ct || !badge) return;
+        const obs = new MutationObserver(() => {
+          const t = ct.textContent.trim();
+          if (t) { badge.textContent = t; badge.style.display = 'inline-flex'; }
+        });
+        obs.observe(ct, { childList: true, subtree: true, characterData: true });
+      });
+    })();
+  </script>
+  <script src="firebase-init.js"></script>
+  <script src="pattis.js"></script>
+</body>
+
+</html>
