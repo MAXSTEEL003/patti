@@ -928,9 +928,249 @@ function scanAndFill(rows) {
   if (arrival) q('#out_arrival').textContent = formatDate(arrival);
 }
 
+// ━━━ Cell Editor: Make table cells directly editable ━━━
+// Map table cell IDs to their corresponding form field IDs
+const CELL_EDITOR_MAP = {
+  'B1': { fieldId: 'miller_name', label: 'Miller Name', type: 'select', isDate: false },
+  'B2': { fieldId: 'party_name', label: 'Party Name', type: 'select', isDate: false },
+  'B3': { fieldId: 'bill_no', label: 'Bill No', type: 'text', isDate: false },
+  'B4': { fieldId: 'arrival_dt', label: 'Arrival Date', type: 'date', isDate: true },
+  'B5': { fieldId: 'rate_qty', label: 'QTY', type: 'number', isDate: false },
+  'B6': { fieldId: 'lorry_small', label: 'Lorry Hire', type: 'number', isDate: false },
+  'B7': { fieldId: 'discount_select', label: 'Discount %', type: 'select', isDate: false },
+  'B8': { fieldId: 'seller_commission', label: 'Seller Commission', type: 'number', isDate: false },
+  'B10': { fieldId: 'qdiff', label: 'Q-Diff', type: 'number', isDate: false },
+  'I6': { fieldId: 'chq_amount', label: 'CHQ Amount', type: 'number', isDate: false },
+  'I7': { fieldId: 'chq_no', label: 'CHQ No', type: 'text', isDate: false },
+  'I8': { fieldId: 'chq_date', label: 'CHQ Date', type: 'date', isDate: true },
+  'I9': { fieldId: 'bank', label: 'Bank', type: 'text', isDate: false },
+  'D10': { fieldId: 'remarks', label: 'Remarks', type: 'textarea', isDate: false }
+};
+
+// Setup cell editors for inline editing in table
+function setupCellEditors() {
+  Object.entries(CELL_EDITOR_MAP).forEach(([cellId, config]) => {
+    const cellEl = q('#' + cellId);
+    if (!cellEl) return;
+
+    // Mark as editable
+    cellEl.setAttribute('data-editable', 'true');
+
+    // Make cell look clickable
+    cellEl.style.cursor = 'pointer';
+    cellEl.style.transition = 'background-color 0.2s ease';
+    cellEl.style.position = 'relative';
+    cellEl.style.borderBottom = '1px dotted rgba(37, 99, 235, 0.3)';
+    cellEl.title = 'Click to edit: ' + config.label;
+
+    // Hover effect
+    cellEl.addEventListener('mouseenter', () => {
+      cellEl.style.backgroundColor = 'rgba(37, 99, 235, 0.08)';
+      cellEl.style.borderBottomStyle = 'solid';
+      cellEl.style.borderBottomColor = 'rgba(37, 99, 235, 0.6)';
+    });
+    cellEl.addEventListener('mouseleave', () => {
+      cellEl.style.backgroundColor = '';
+      cellEl.style.borderBottomStyle = 'dotted';
+      cellEl.style.borderBottomColor = 'rgba(37, 99, 235, 0.3)';
+    });
+
+    // Click to edit
+    cellEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showCellEditor(cellId, config);
+    });
+  });
+}
+
+function showCellEditor(cellId, config) {
+  const formField = q('#' + config.fieldId);
+  if (!formField) return;
+
+  // Remove existing editor if open
+  document.getElementById('_cell_editor_modal')?.remove();
+
+  // Create modal
+  const modal = document.createElement('div');
+  modal.id = '_cell_editor_modal';
+  Object.assign(modal.style, {
+    position: 'fixed',
+    inset: '0',
+    background: 'rgba(10,15,30,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: '999999',
+    padding: '1rem',
+    backdropFilter: 'blur(3px)'
+  });
+
+  const box = document.createElement('div');
+  Object.assign(box.style, {
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '1.5rem',
+    maxWidth: '500px',
+    width: '90%',
+    boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+    animation: 'scaleIn 0.25s ease-out'
+  });
+
+  // Title
+  const title = document.createElement('h3');
+  title.textContent = 'Edit ' + config.label;
+  Object.assign(title.style, {
+    margin: '0 0 1rem 0',
+    fontFamily: 'Inter, sans-serif',
+    fontSize: '1.1rem',
+    fontWeight: '600',
+    color: '#1e293b'
+  });
+  box.appendChild(title);
+
+  // Input field
+  let input;
+  if (config.type === 'select') {
+    input = document.createElement('select');
+    if (config.fieldId === 'discount_select') {
+      // Discount select options
+      input.innerHTML = `
+        <option value="0">No discount</option>
+        <option value="0.04">4%</option>
+        <option value="0.03">3%</option>
+        <option value="0.02">2%</option>
+        <option value="0.01">1%</option>
+      `;
+    } else {
+      // Miller or Party selects - populate from form field
+      const originalSelect = formField;
+      input.innerHTML = originalSelect.innerHTML;
+    }
+    input.value = formField.value;
+  } else if (config.type === 'textarea') {
+    input = document.createElement('textarea');
+    input.value = formField.value;
+    input.rows = 4;
+    Object.assign(input.style, { resize: 'vertical', fontFamily: 'monospace' });
+  } else {
+    input = document.createElement('input');
+    input.type = config.type;
+    input.value = formField.value;
+  }
+
+  Object.assign(input.style, {
+    width: '100%',
+    padding: '0.75rem',
+    border: '1.5px solid #e2e8f0',
+    borderRadius: '10px',
+    fontFamily: 'Inter, sans-serif',
+    fontSize: '0.95rem',
+    boxSizing: 'border-box',
+    outline: 'none',
+    transition: 'border-color 0.2s'
+  });
+
+  input.addEventListener('focus', () => {
+    input.style.borderColor = '#2563eb';
+  });
+  input.addEventListener('blur', () => {
+    input.style.borderColor = '#e2e8f0';
+  });
+
+  box.appendChild(input);
+
+  // Buttons
+  const buttonGroup = document.createElement('div');
+  Object.assign(buttonGroup.style, {
+    display: 'flex',
+    gap: '0.75rem',
+    marginTop: '1.5rem',
+    justifyContent: 'flex-end'
+  });
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  Object.assign(cancelBtn.style, {
+    padding: '0.6rem 1.2rem',
+    border: '1px solid #e2e8f0',
+    borderRadius: '8px',
+    background: '#f8fafc',
+    color: '#64748b',
+    cursor: 'pointer',
+    fontFamily: 'Inter, sans-serif',
+    fontWeight: '500',
+    transition: 'all 0.2s'
+  });
+  cancelBtn.addEventListener('click', () => modal.remove());
+  cancelBtn.addEventListener('mouseenter', () => {
+    cancelBtn.style.background = '#e2e8f0';
+  });
+  cancelBtn.addEventListener('mouseleave', () => {
+    cancelBtn.style.background = '#f8fafc';
+  });
+
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  Object.assign(saveBtn.style, {
+    padding: '0.6rem 1.2rem',
+    border: 'none',
+    borderRadius: '8px',
+    background: '#2563eb',
+    color: '#fff',
+    cursor: 'pointer',
+    fontFamily: 'Inter, sans-serif',
+    fontWeight: '600',
+    transition: 'all 0.2s'
+  });
+  saveBtn.addEventListener('click', () => {
+    formField.value = input.value;
+    formField.dispatchEvent(new Event('input', { bubbles: true }));
+    formField.dispatchEvent(new Event('change', { bubbles: true }));
+    modal.remove();
+    try { recalcAll(); } catch (e) { }
+    showToast('✓ Updated: ' + config.label);
+  });
+  saveBtn.addEventListener('mouseenter', () => {
+    saveBtn.style.background = '#1d4ed8';
+  });
+  saveBtn.addEventListener('mouseleave', () => {
+    saveBtn.style.background = '#2563eb';
+  });
+
+  buttonGroup.appendChild(cancelBtn);
+  buttonGroup.appendChild(saveBtn);
+  box.appendChild(buttonGroup);
+
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+
+  // Close on backdrop click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+
+  // Focus input and select all text
+  setTimeout(() => {
+    input.focus();
+    if (input.select) input.select();
+  }, 50);
+
+  // Enter to save, Escape to cancel
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && input.tagName !== 'TEXTAREA') {
+      saveBtn.click();
+    } else if (e.key === 'Escape') {
+      cancelBtn.click();
+    }
+  });
+}
+
 function wire() {
   // input listeners
   // removed dynamic adjustments; addRow no longer used
+
+  // Setup cell editors for direct table editing
+  setupCellEditors();
 
   q('#itemsTable')?.addEventListener('click', e => {
     if (e.target.classList.contains('del')) {
@@ -1174,6 +1414,13 @@ function wire() {
           listWrap.innerHTML = `<p style="color:#94a3b8;font-size:0.85rem;text-align:center;padding:1.5rem 0;font-family:Inter,sans-serif">No names yet. Add one above!</p>`;
           return;
         }
+        
+        // Add hint text
+        const hint = document.createElement('p');
+        hint.style.cssText = 'color:#64748b;font-size:0.8rem;margin:0 0 0.75rem 0;padding:0 0.5rem;font-family:Inter,sans-serif;display:flex;align-items:center;gap:0.5rem';
+        hint.innerHTML = '💡 Click name to select • Click 🗑 to delete';
+        listWrap.appendChild(hint);
+        
         currentNames.forEach(name => {
           const row = document.createElement('div');
           Object.assign(row.style, {
@@ -1198,14 +1445,20 @@ function wire() {
           });
 
           const delBtn = document.createElement('button');
-          delBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+          delBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
           Object.assign(delBtn.style, {
-            background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer',
-            padding: '4px 6px', borderRadius: '6px', transition: 'background .15s', display: 'flex', alignItems: 'center'
+            background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', cursor: 'pointer',
+            padding: '6px 8px', borderRadius: '6px', transition: 'all .15s', display: 'flex', alignItems: 'center', fontWeight: '600'
           });
-          delBtn.title = 'Delete';
-          delBtn.addEventListener('mouseenter', () => delBtn.style.background = '#fee2e2');
-          delBtn.addEventListener('mouseleave', () => delBtn.style.background = 'none');
+          delBtn.title = 'Delete this name';
+          delBtn.addEventListener('mouseenter', () => {
+            delBtn.style.background = '#fee2e2';
+            delBtn.style.borderColor = '#ef4444';
+          });
+          delBtn.addEventListener('mouseleave', () => {
+            delBtn.style.background = 'rgba(239, 68, 68, 0.05)';
+            delBtn.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+          });
           delBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             deleteName(name);

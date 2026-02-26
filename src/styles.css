@@ -228,8 +228,8 @@ h1 {
 
 /* ── Main Content Layout ─────────────────────────────────── */
 .main-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-wrap: wrap;
     gap: clamp(1rem, 2.5vw, 2rem);
     margin-bottom: 1.5rem;
 }
@@ -239,6 +239,9 @@ h1 {
     flex-direction: column;
     gap: 1rem;
     animation: slideInLeft 0.4s var(--t-base) 0.1s both;
+    flex: 1;
+    min-width: 280px;
+    order: 2;
 }
 
 .right-panel {
@@ -246,6 +249,9 @@ h1 {
     flex-direction: column;
     gap: 1rem;
     animation: slideInRight 0.4s var(--t-base) 0.15s both;
+    flex: 1;
+    min-width: 380px;
+    order: 1;
 }
 
 /* ── Form Sections / Cards ───────────────────────────────── */
@@ -552,6 +558,11 @@ select#discount_select:focus {
 
 .sheet tbody tr:hover {
     background: #f5f7ff;
+}
+
+/* ── Editable Cells ──────────────────────────────────────── */
+.sheet td[data-editable] {
+    position: relative;
 }
 
 /* Cell specific */

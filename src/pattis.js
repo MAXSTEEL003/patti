@@ -14,6 +14,9 @@
   let _remoteItems = [];
   // IDs already seen so we can flash-highlight only genuinely new arrivals
   let _knownRemoteIds = new Set();
+  // Track deleted items to prevent them from reappearing when Firestore updates
+  let _deletedItemIds = new Set();
+  let _deletedRemoteUrls = new Set();
   let _liveConnected = false;
 
   // Detect mobile/touch device
@@ -26,8 +29,10 @@
     const localIds = new Set(local.map(i => i.id));
     const localRemoteUrls = new Set(local.map(i => i.remoteUrl).filter(Boolean));
     // append remote-only items (those not in localStorage) from Firestore
+    // but exclude deleted items
     const remoteOnly = _remoteItems.filter(r =>
-      !localIds.has(r.id) && (!r.remoteUrl || !localRemoteUrls.has(r.remoteUrl))
+      !localIds.has(r.id) && (!r.remoteUrl || !localRemoteUrls.has(r.remoteUrl)) &&
+      !_deletedItemIds.has(r.id) && (!r.remoteUrl || !_deletedRemoteUrls.has(r.remoteUrl))
     );
     return [...local, ...remoteOnly].sort((a, b) => (b.created || 0) - (a.created || 0));
   }
@@ -411,7 +416,42 @@
     } catch (e) { console.error('downloadPdf error', e); alert('Failed to create PDF: ' + (e && e.message ? e.message : e) + '\nOpen the browser console for details.'); }
   }
 
-  function deleteItem(id) { if (!confirm('Delete this patti?')) return; const arr = loadAll().filter(i => i.id !== id); saveAll(arr); render(); }
+  // Improved deleteItem: removes from both local storage and remote items
+  function deleteItem(id) { 
+    if (!confirm('Delete this patti?')) return;
+    
+    // Remove from localStorage
+    const arr = loadAll().filter(i => i.id !== id);
+    saveAll(arr);
+    
+    // Find the item being deleted (to get remoteUrl if present)
+    const allItems = mergedItems();
+    const deletedItem = allItems.find(i => i.id === id);
+    const deletedRemoteUrl = deletedItem?.remoteUrl;
+    
+    // Remove from remote items array (by both id and remoteUrl to ensure complete removal)
+    _remoteItems = _remoteItems.filter(r => r.id !== id && (!deletedRemoteUrl || r.remoteUrl !== deletedRemoteUrl));
+    
+    // Add to deleted tracking sets to prevent reappearance when Firestore updates
+    _deletedItemIds.add(id);
+    if (deletedRemoteUrl) _deletedRemoteUrls.add(deletedRemoteUrl);
+    
+    // Update known IDs set
+    _knownRemoteIds.delete(id);
+    if (deletedRemoteUrl) _knownRemoteIds.delete(deletedRemoteUrl);
+    
+    // Re-render gallery
+    render();
+    
+    // Show confirmation
+    try {
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#10b981;color:#fff;padding:12px 16px;border-radius:8px;font-size:13px;z-index:999999;animation:slideInRight 0.3s ease-out';
+      toast.textContent = '✓ Deleted successfully';
+      document.body.appendChild(toast);
+      setTimeout(() => { try { toast.remove(); } catch (e) { } }, 2000);
+    } catch (e) { }
+  }
 
   // modal/enlarge
   const modal = q('#modal'); const modalImg = q('#modalImg'); const modalTitle = q('#modalTitle'); const modalDate = q('#modalDate'); const modalInfo = q('#modalInfo');
@@ -516,6 +556,11 @@
     if (!confirm('Delete ALL pattis? This cannot be undone.')) return;
     localStorage.removeItem(PATTIS_KEY);
     // Also clear remote items so gallery truly appears empty
+    const allItems = mergedItems();
+    allItems.forEach(item => {
+      _deletedItemIds.add(item.id);
+      if (item.remoteUrl) _deletedRemoteUrls.add(item.remoteUrl);
+    });
     _remoteItems = [];
     _knownRemoteIds = new Set();
     render();
