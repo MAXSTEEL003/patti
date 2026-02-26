@@ -17,7 +17,7 @@ async function initFirebase() {
   try {
     console.log('firebase-init: loading SDK...');
     const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js');
-    const { getFirestore, collection, query, orderBy, startAt, endAt, limit, getDocs, addDoc, onSnapshot } = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js');
+    const { getFirestore, collection, query, orderBy, startAt, endAt, limit, getDocs, addDoc, onSnapshot, deleteDoc, doc } = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js');
     const { getAuth, signInAnonymously, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js');
     console.log('firebase-init: SDK loaded');
     const app = initializeApp(window.FIREBASE_CONFIG);
@@ -139,6 +139,24 @@ async function initFirebase() {
         }, err => { console.warn('listenPattis snapshot error', err); });
         return unsub;
       } catch (e) { console.warn('listenPattis error', e); return () => { }; }
+    };
+
+    // Delete a patti document from Firestore by firestoreId
+    window.firebaseNames.deletePatti = async function (firestoreId) {
+      if (!firebaseEnabled || !db) {
+        throw new Error('Firebase not initialized');
+      }
+      if (typeof deleteDoc !== 'function') {
+        throw new Error('deleteDoc not available');
+      }
+      try {
+        await deleteDoc(doc(db, 'pattis', firestoreId));
+        console.log('Firebase deletePatti: deleted document', firestoreId);
+        return { success: true };
+      } catch (e) {
+        console.warn('firebase deletePatti error', e);
+        throw e;
+      }
     };
 
     console.log('Firebase names search enabled');
