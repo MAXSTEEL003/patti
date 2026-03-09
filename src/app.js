@@ -225,8 +225,7 @@ function recalcAll() {
   // QTY -> B5, RATE -> D5, E5 shows calculated amount
   const B5 = q('#B5'); if (B5) B5.textContent = formatNumber(gQty);
 
-  // RATE row: E5 should show the single calculated amount (singleAmount already computed)
-  const C5 = q('#C5'); if (C5) C5.textContent = '';
+  // RATE row: D5 is the rate input field (not to be cleared), E5 shows calculated amount
   const D5 = q('#D5'); if (D5) D5.textContent = formatNumber(gRate);
   const E5 = q('#E5'); if (E5) E5.textContent = formatNumber(singleAmount);
 
@@ -936,6 +935,7 @@ const CELL_EDITOR_MAP = {
   'B3': { fieldId: 'bill_no', label: 'Bill No', type: 'text', isDate: false },
   'B4': { fieldId: 'arrival_dt', label: 'Arrival Date', type: 'date', isDate: true },
   'B5': { fieldId: 'rate_qty', label: 'QTY', type: 'number', isDate: false },
+  'D5': { fieldId: 'rate_rate', label: 'RATE', type: 'number', isDate: false },
   'B6': { fieldId: 'lorry_small', label: 'Lorry Hire', type: 'number', isDate: false },
   'B7': { fieldId: 'discount_select', label: 'Discount %', type: 'select', isDate: false },
   'B8': { fieldId: 'seller_commission', label: 'Seller Commission', type: 'number', isDate: false },
